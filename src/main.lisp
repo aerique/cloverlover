@@ -5,6 +5,8 @@
 (ql:quickload :drakma)
 (ql:quickload :jsown)
 
+(load "credentials.lisp")
+
 
 ;;; Globals
 
