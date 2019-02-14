@@ -19,6 +19,11 @@
 
 ;;; Common Functions
 
+(defun errmsg (&rest args)
+  (apply #'format (append (list *error-output*) args))
+  (force-output *error-output*))
+
+
 (defun make-keyword (string)
   (intern (string-upcase string) :keyword))
 
@@ -47,8 +52,10 @@
                (jsown:val json "id")))
          (secret (when (jsown:keyp json "secret")
                    (jsown:val json "secret"))))
-    (when (and id secret)
-      (list :id id :secret secret))))
+    (if (and id secret)
+        (list :id id :secret secret)
+        (progn (errmsg "~S" json)
+               nil))))
 
 
 (defun register-new-device (secret name &optional (os "O"))
@@ -64,8 +71,10 @@
                    (jsown:val json "status")))
          (request (when (jsown:keyp json "request")
                     (jsown:val json "request"))))
-    (when (and device-id status request)
-      (list :device-id device-id :status status :request request))))
+    (if (and device-id status request)
+        (list :device-id device-id :status status :request request)
+        (progn (errmsg "~S" json)
+               nil))))
 
 
 (defun delete-messages (secret device-id highest-message-id)
@@ -75,7 +84,10 @@
                      :parameters `(("secret"  . ,secret)
                                    ("message" . ,(mkstr highest-message-id)))))
          (json (jsown:parse (octets-to-string response))))
-    json))
+    (if (= (jsown:val json "status") 1)
+        t
+        (progn (errmsg "~S" json)
+               nil))))
 
 
 (defun parse-messages (json)
@@ -104,12 +116,8 @@
                                     :parameters `(("secret"    . ,secret)
                                                   ("device_id" . ,device-id))))
          (json (jsown:parse (octets-to-string response))))
-    (values (parse-messages json)
-            ;; FIXME return the non-messages objects here
-            'return-other-json-objects-here)))
-
-
-;;; Main Program
-
-(defun main ()
-  )
+    (if (= (jsown:val json "status") 1)
+        (values (parse-messages json)
+                (append '(:obj) (cddr json)))
+        (progn (errmsg "~S" json)
+               nil))))
