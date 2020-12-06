@@ -3,6 +3,7 @@
 ;;; Packages
 
 (ql:quickload :drakma)
+(ql:quickload :flexi-streams)
 (ql:quickload :jsown)
 
 (load "credentials.lisp")
@@ -42,14 +43,14 @@
     (dolist (a args) (princ a s))))
 
 
-;;; Functions
+;;; Pushover API Functions
 
 (defun login (email password)
   (let* ((response (drakma:http-request (mkstr *api-url* "users/login.json")
                                       :method :POST :user-agent *user-agent*
                                       :parameters `(("email"    . ,email)
                                                     ("password" . ,password))))
-         (json (jsown:parse (octets-to-string response)))
+         (json (jsown:parse (flexi-streams:octets-to-string response)))
          (id (when (jsown:keyp json "id")
                (jsown:val json "id")))
          (secret (when (jsown:keyp json "secret")
@@ -66,7 +67,7 @@
                                         :parameters `(("secret" . ,secret)
                                                       ("name"   . ,name)
                                                       ("os"     . ,os))))
-         (json (jsown:parse (octets-to-string response)))
+         (json (jsown:parse (flexi-streams:octets-to-string response)))
          (device-id (when (jsown:keyp json "id")
                       (jsown:val json "id")))
          (status (when (jsown:keyp json "status")
@@ -85,7 +86,7 @@
                      :method :POST :user-agent *user-agent*
                      :parameters `(("secret"  . ,secret)
                                    ("message" . ,(mkstr highest-message-id)))))
-         (json (jsown:parse (octets-to-string response))))
+         (json (jsown:parse (flexi-streams:octets-to-string response))))
     (if (= (jsown:val json "status") 1)
         t
         (progn (errmsg "~S" json)
@@ -117,7 +118,7 @@
                                     :method :GET :user-agent *user-agent*
                                     :parameters `(("secret"    . ,secret)
                                                   ("device_id" . ,device-id))))
-         (json (jsown:parse (octets-to-string response))))
+         (json (jsown:parse (flexi-streams:octets-to-string response))))
     (if (= (jsown:val json "status") 1)
         (values (parse-messages json)
                 (append '(:obj) (cddr json)))
