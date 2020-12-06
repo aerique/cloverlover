@@ -124,3 +124,29 @@
                 (append '(:obj) (cddr json)))
         (progn (errmsg "~S" json)
                nil))))
+
+
+;;; Functions
+
+(defun highest-message (messages)
+  "Returns the highest message ID in MESSAGES.
+  MESSAGES is assumed to be in the format as returned by DOWNLOAD-MESSAGES."
+  (loop with highest-id = 0
+        for msg in messages
+        for id = (getf msg :id)
+        for message = (getf msg :message)
+        do (when (> id highest-id)
+             (setf highest-id id))
+        finally (return highest-id)))
+
+
+(defun catch-up-on-all-messages (secret device-id)
+  (loop for msgs = (download-messages secret device-id)
+        while msgs
+        for highest-id = (highest-message msgs)
+        do (format t "Retrieved ~D messages.~%" (length msgs))
+           (format t "  - highest id: ~D~%" highest-id)
+           (format t "  - deleting messages...~%")
+           (finish-output)
+           (delete-messages secret device-id highest-id)
+           (sleep 1)))
