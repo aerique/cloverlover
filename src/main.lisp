@@ -57,48 +57,67 @@
     (dolist (a args) (princ a s))))
 
 
+;;; Pushover API Helper Functions
+
+(defun api-call (resource &key (method :GET) (parameters nil))
+  (let ((url (mkstr *api-url* resource)))
+    (dbgmsg "[api-call] ~S request to ~S ~S~%" method url parameters)
+    (handler-case (drakma:http-request url :method method
+                                           :user-agent *user-agent*
+                                           :parameters parameters)
+      (error (e) (errmsg "[api-call] Error doing ~S request to ~S (~S): ~S~%"
+                         method url parameters e)
+                 ;; So this look retarded, and maybe it is, but all other
+                 ;; errors from either Pushover or Cloverlover are in JSON so
+                 ;; this one might be as well.  (Especially since the main
+                 ;; initial use of this lib is as a backend to a QT frontend,
+                 ;; so we want to handle and show the errors in the frontend.)
+                 (flexi-streams:string-to-octets
+                   (let ((*print-pretty* nil))
+                     (mkstr "{\"errors\": \"" e "\", \"status\": 0, "
+                            "\"cloverlover-error\": true}")))))))
+
+
+(defun json-response (drakma-response)
+  "This function expects to be fed the return value of DRAKMA:HTTP-REQUEST."
+  (handler-case (flexi-streams:octets-to-string drakma-response)
+    (error (e) (errmsg (mkstr "[string-response] Error converting octets to "
+                              "string: ~S (DRAKMA-RESPONSE: ~S)~%")
+                       e drakma-response)
+               (let ((*print-pretty* nil))
+                 (mkstr "{\"errors\": \"Error converting octets to string: " e
+                        "\", \"status\": 0, \"cloverlover-error\": true, "
+                        "\"drakma-response\": \"" drakma-response "\"}")))))
+
+
+(defun parsed-response (drakma-response)
+  "This function expects to be fed the return value of DRAKMA:HTTP-REQUEST."
+  (handler-case (json2plist (jsown:parse (string-response drakma-response)))
+    (error (e) (errmsg "[json-response] Error parsing JSON: ~S~%" e)
+               (let ((*print-pretty* nil))
+                 `(:errors ,(mkstr "Error parsing JSON: " e) :status 0
+                   :cloverlover-error t :drakma-response ,drakma-response)))))
+
+
 ;;; Pushover API Functions
 
 (defun login (email password &key (parse-json t))
-  (let* ((response (handler-case (drakma:http-request
-                                  (mkstr *api-url* "users/login.json")
-                                  :method :POST :user-agent *user-agent*
-                                  :parameters `(("email"    . ,email)
-                                                ("password" . ,password)))
-                     (error (e) (mkstr e))))
-         (response-string (handler-case (flexi-streams:octets-to-string
-                                         response)
-                            (error () (mkstr "{\"errors\": \"Error converting "
-                                             "octets to string\", \"status\": "
-                                             "0, \"cloverlover-error\": true, "
-                                             "\"response\": \"" response
-                                             "\"}")))))
+  (let ((response (api-call "users/login.json" :method :POST
+                            :parameters `(("email"    . ,email)
+                                          ("password" . ,password)))))
     (if parse-json
-        (json2plist (handler-case (jsown:parse response-string)
-                      (error () `(:obj ("errors" . "Error parsing JSON")
-                                     ("status" . 0)
-                                     ("cloverlover-error" . t)
-                                     ("response-string" . ,response-string)))))
-        response-string)))
+        (parsed-response response)
+        (json-response response))))
 
 
-(defun register-new-device (secret name &optional (os "O"))
-  (let* ((response (drakma:http-request (mkstr *api-url* "/devices.json")
-                                        :method :POST :user-agent *user-agent*
-                                        :parameters `(("secret" . ,secret)
-                                                      ("name"   . ,name)
-                                                      ("os"     . ,os))))
-         (json (jsown:parse (flexi-streams:octets-to-string response)))
-         (device-id (when (jsown:keyp json "id")
-                      (jsown:val json "id")))
-         (status (when (jsown:keyp json "status")
-                   (jsown:val json "status")))
-         (request (when (jsown:keyp json "request")
-                    (jsown:val json "request"))))
-    (if (and device-id status request)
-        (list :device-id device-id :status status :request request)
-        (progn (errmsg "~S" json)
-               nil))))
+(defun register-new-device (secret name &key (os "O") (parse-json t))
+  (let ((response (api-call "devices.json" :method :POST
+                            :parameters `(("secret" . ,secret)
+                                          ("name"   . ,name)
+                                          ("os"     . ,os)))))
+    (if parse-json
+        (parsed-response response)
+        (json-response response))))
 
 
 (defun delete-messages (secret device-id highest-message-id)
