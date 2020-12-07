@@ -1,12 +1,16 @@
 ;;;; main.lisp
 
-;;; Packages
+(in-package :cl-user)
 
-(ql:quickload :drakma)
-(ql:quickload :flexi-streams)
-(ql:quickload :jsown)
 
-(load "credentials.lisp")
+;;; Package
+
+(defpackage :cloverlover
+  (:use :cl)
+  (:export :catch-up-on-all-messages :delete-messages :download-messages :login
+           :register-new-device))
+
+(in-package :cloverlover)
 
 
 ;;; Globals
@@ -14,7 +18,7 @@
 (defparameter *api-url* "https://api.pushover.net/1/")
 
 (defparameter *app-name*    "Cloverlover")
-(defparameter *app-version* "0.0.1")
+(defparameter *app-version* "0.0.2")
 
 (defparameter *user-agent* (concatenate 'string *app-name* "/" *app-version*
                                       " " (drakma::user-agent-string :drakma)))
