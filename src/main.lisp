@@ -15,6 +15,8 @@
 
 ;;; Globals
 
+(defparameter *verbose* t)
+
 (defparameter *api-url* "https://api.pushover.net/1/")
 
 (defparameter *app-name*    "Cloverlover")
@@ -27,8 +29,16 @@
 ;;; Common Functions
 
 (defun errmsg (&rest args)
-  (apply #'format (append (list *error-output*) args))
+  (let ((*print-pretty* nil))
+    (apply #'format (append (list *error-output*) args)))
   (force-output *error-output*))
+
+
+(defun dbgmsg (&rest args)
+  (when *verbose*
+    (let ((*print-pretty* nil))
+      (apply #'format (append (list *standard-output*) args)))
+    (force-output *standard-output*)))
 
 
 (defun make-keyword (string)
