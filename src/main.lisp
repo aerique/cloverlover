@@ -49,20 +49,27 @@
 
 ;;; Pushover API Functions
 
-(defun login (email password)
-  (let* ((response (drakma:http-request (mkstr *api-url* "users/login.json")
-                                      :method :POST :user-agent *user-agent*
-                                      :parameters `(("email"    . ,email)
-                                                    ("password" . ,password))))
-         (json (jsown:parse (flexi-streams:octets-to-string response)))
-         (id (when (jsown:keyp json "id")
-               (jsown:val json "id")))
-         (secret (when (jsown:keyp json "secret")
-                   (jsown:val json "secret"))))
-    (if (and id secret)
-        (list :id id :secret secret)
-        (progn (errmsg "~S" json)
-               nil))))
+(defun login (email password &key (parse-json t))
+  (let* ((response (handler-case (drakma:http-request
+                                  (mkstr *api-url* "users/login.json")
+                                  :method :POST :user-agent *user-agent*
+                                  :parameters `(("email"    . ,email)
+                                                ("password" . ,password)))
+                     (error (e) (mkstr e))))
+         (response-string (handler-case (flexi-streams:octets-to-string
+                                         response)
+                            (error () (mkstr "{\"errors\": \"Error converting "
+                                             "octets to string\", \"status\": "
+                                             "0, \"cloverlover-error\": true, "
+                                             "\"response\": \"" response
+                                             "\"}")))))
+    (if parse-json
+        (json2plist (handler-case (jsown:parse response-string)
+                      (error () `(:obj ("errors" . "Error parsing JSON")
+                                     ("status" . 0)
+                                     ("cloverlover-error" . t)
+                                     ("response-string" . ,response-string)))))
+        response-string)))
 
 
 (defun register-new-device (secret name &optional (os "O"))
