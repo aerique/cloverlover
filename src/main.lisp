@@ -53,8 +53,12 @@
                                  (equal :obj (car val)))
                             (json2plist val))
                            ((listp val)
+                            ;; XXX duplication of above sexp
                             (loop for item in val
-                                  collect (json2plist item)))
+                                  collect (if (and (consp item)
+                                                   (equal :obj (car item)))
+                                              (json2plist item)
+                                              item)))
                            (t
                             (jsown:val json key))))))
 
@@ -160,17 +164,13 @@
                         :icon icon :umid umid))))
 
 
-(defun download-messages (secret device-id)
-  (let* ((response (drakma:http-request (mkstr *api-url* "/messages.json")
-                                    :method :GET :user-agent *user-agent*
-                                    :parameters `(("secret"    . ,secret)
-                                                  ("device_id" . ,device-id))))
-         (json (jsown:parse (flexi-streams:octets-to-string response))))
-    (if (= (jsown:val json "status") 1)
-        (values (parse-messages json)
-                (append '(:obj) (cddr json)))
-        (progn (errmsg "~S" json)
-               nil))))
+(defun download-messages (secret device-id &key (parse-json t))
+  (let ((response (api-call "messages.json" :method :GET
+                            :parameters `(("secret"    . ,secret)
+                                          ("device_id" . ,device-id)))))
+    (if parse-json
+        (parsed-response response)
+        (json-response response))))
 
 
 ;;; Functions
