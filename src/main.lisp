@@ -78,7 +78,7 @@
                                            :parameters parameters)
       (error (e) (errmsg "[api-call] Error doing ~S request to ~S (~S): ~S~%"
                          method url parameters e)
-                 ;; So this look retarded, and maybe it is, but all other
+                 ;; So this looks retarded, and maybe it is, but all other
                  ;; errors from either Pushover or Cloverlover are in JSON so
                  ;; this one might be as well.  (Especially since the main
                  ;; initial use of this lib is as a backend to a QT frontend,
@@ -131,19 +131,6 @@
         (json-response response))))
 
 
-(defun delete-messages (secret device-id highest-message-id)
-  (let* ((response (drakma:http-request (mkstr *api-url* "/devices/" device-id
-                                               "/update_highest_message.json")
-                     :method :POST :user-agent *user-agent*
-                     :parameters `(("secret"  . ,secret)
-                                   ("message" . ,(mkstr highest-message-id)))))
-         (json (jsown:parse (flexi-streams:octets-to-string response))))
-    (if (= (jsown:val json "status") 1)
-        t
-        (progn (errmsg "~S" json)
-               nil))))
-
-
 (defun parse-messages (json)
   (when (jsown:keyp json "messages")
     (loop for msg in (jsown:val json "messages")
@@ -168,6 +155,18 @@
   (let ((response (api-call "messages.json" :method :GET
                             :parameters `(("secret"    . ,secret)
                                           ("device_id" . ,device-id)))))
+    (if parse-json
+        (parsed-response response)
+        (json-response response))))
+
+
+(defun delete-messages (secret device-id highest-message-id
+                        &key (parse-json t))
+  (let ((response (api-call (mkstr "devices/" device-id
+                                   "/update_highest_message.json")
+                    :method :POST
+                    :parameters `(("secret"  . ,secret)
+                                  ("message" . ,(mkstr highest-message-id))))))
     (if parse-json
         (parsed-response response)
         (json-response response))))
