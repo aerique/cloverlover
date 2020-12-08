@@ -45,11 +45,18 @@
   (intern (string-upcase string) :keyword))
 
 
-;; FIXME use this in all the right places
 (defun json2plist (json)
   (loop for key in (jsown:keywords json)
+        for val = (jsown:val json key)
         append (list (make-keyword key)
-                     (jsown:val json key))))
+                     (cond ((and (consp val)
+                                 (equal :obj (car val)))
+                            (json2plist val))
+                           ((listp val)
+                            (loop for item in val
+                                  collect (json2plist item)))
+                           (t
+                            (jsown:val json key))))))
 
 
 (defun mkstr (&rest args)
