@@ -92,7 +92,7 @@
 (defun json-response (drakma-response)
   "This function expects to be fed the return value of DRAKMA:HTTP-REQUEST."
   (handler-case (flexi-streams:octets-to-string drakma-response)
-    (error (e) (errmsg (mkstr "[string-response] Error converting octets to "
+    (error (e) (errmsg (mkstr "[json-response] Error converting octets to "
                               "string: ~S (DRAKMA-RESPONSE: ~S)~%")
                        e drakma-response)
                (let ((*print-pretty* nil))
@@ -103,8 +103,8 @@
 
 (defun parsed-response (drakma-response)
   "This function expects to be fed the return value of DRAKMA:HTTP-REQUEST."
-  (handler-case (json2plist (jsown:parse (string-response drakma-response)))
-    (error (e) (errmsg "[json-response] Error parsing JSON: ~S~%" e)
+  (handler-case (json2plist (jsown:parse (json-response drakma-response)))
+    (error (e) (errmsg "[parsed-response] Error parsing JSON: ~S~%" e)
                (let ((*print-pretty* nil))
                  `(:errors ,(mkstr "Error parsing JSON: " e) :status 0
                    :cloverlover-error t :drakma-response ,drakma-response)))))
