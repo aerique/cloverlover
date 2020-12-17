@@ -1,5 +1,12 @@
 # Cloverlover
 
+The canonical home page of this project is https://git.sr.ht/~aerique/cloverlover
+
+(This project is also pushed to GitLab and GitHub but those sites are
+not monitored for support.)
+
+## Description
+
 A Common Lisp client for [Pushover](https://pushover.net/)'s [Open
 Client API](https://pushover.net/api/client).
 
