@@ -25,6 +25,6 @@ and I've been using it happily for years.
 
 ## To Do
 
-- [ ] better error handling
+- [X] better error handling
 - [ ] example client
 - [ ] tests
